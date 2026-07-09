@@ -2,6 +2,10 @@
 
 SwiftUI macOS app for tracking daily Jira ticket time entries.
 
+## Screenshot
+
+![Jira Hours daily tracking screen](docs/images/jira-hours-today.png)
+
 ## Features
 
 - Main view for the selected day, defaulting to today.
