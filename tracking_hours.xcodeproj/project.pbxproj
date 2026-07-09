@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		8BCC21262FFFF72C0069B794 /* tracking_hours.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tracking_hours.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8BCC21262FFFF72C0069B794 /* tracking_hours.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = tracking_hours.app; path = "Jira Hours.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -255,6 +255,8 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Jira Hours";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -262,7 +264,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "atlas.tracking-hours";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Jira Hours";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -285,6 +287,8 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Jira Hours";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -292,7 +296,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "atlas.tracking-hours";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Jira Hours";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
