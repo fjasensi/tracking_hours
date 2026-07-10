@@ -8,6 +8,7 @@ struct TicketLibraryView: View {
     @State private var selectedTicketCode: String?
     @State private var ticketPendingDeletion: JiraTicket?
     @State private var showingDeleteConfirmation = false
+    @State private var showingCreateTicket = false
 
     private enum TicketFilter: String, CaseIterable, Identifiable {
         case active
@@ -98,6 +99,13 @@ struct TicketLibraryView: View {
             .padding(20)
         }
         .navigationTitle("Tickets")
+        .sheet(isPresented: $showingCreateTicket) {
+            NewTicketView { ticket in
+                filter = .active
+                selectedTicketCode = ticket.code
+            }
+            .environmentObject(store)
+        }
         .confirmationDialog(
             "Delete ticket",
             isPresented: $showingDeleteConfirmation,
@@ -120,7 +128,13 @@ struct TicketLibraryView: View {
             }
         }
         .onChange(of: filter) { _, _ in
-            selectedTicketCode = nil
+            guard let selectedTicketCode else {
+                return
+            }
+
+            if !tickets.contains(where: { $0.code == selectedTicketCode }) {
+                self.selectedTicketCode = nil
+            }
         }
     }
 
@@ -143,6 +157,13 @@ struct TicketLibraryView: View {
             }
             .pickerStyle(.segmented)
             .frame(width: 260)
+
+            Button {
+                showingCreateTicket = true
+            } label: {
+                Label("New ticket", systemImage: "plus")
+            }
+            .keyboardShortcut("n", modifiers: [.command])
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
@@ -162,6 +183,12 @@ struct TicketLibraryView: View {
             }
 
             Spacer()
+
+            Button {
+                showingCreateTicket = true
+            } label: {
+                Label("New", systemImage: "plus")
+            }
 
             Button {
                 if let selectedTicket {
@@ -206,11 +233,11 @@ struct TicketLibraryView: View {
     private var emptyMessage: String {
         switch filter {
         case .active:
-            return "Add a time entry to create the first active ticket."
+            return "Create a ticket now so it is ready when you log time."
         case .closed:
             return "Closed tickets will appear here when you archive them."
         case .all:
-            return "Tickets are created automatically from time entries."
+            return "Create a ticket here or add one with a time entry."
         }
     }
 
@@ -238,6 +265,102 @@ struct TicketLibraryView: View {
         store.deleteTicket(code: ticketPendingDeletion.code)
         selectedTicketCode = nil
         self.ticketPendingDeletion = nil
+    }
+}
+
+private struct NewTicketView: View {
+    @EnvironmentObject private var store: TimeTrackerStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var ticketCode = ""
+    @State private var summary = ""
+    @FocusState private var focusedField: Field?
+
+    let onCreate: (JiraTicket) -> Void
+
+    private enum Field {
+        case ticketCode
+        case summary
+    }
+
+    private var normalizedCode: String {
+        ticketCode.normalizedTicketCode
+    }
+
+    private var existingTicket: JiraTicket? {
+        store.ticket(for: normalizedCode)
+    }
+
+    private var canCreate: Bool {
+        !normalizedCode.isEmpty && existingTicket == nil
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("New ticket")
+                    .font(.title2.weight(.semibold))
+                Text("Prepare a ticket before logging any time.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Form {
+                TextField("Ticket", text: $ticketCode, prompt: Text("ABC-123"))
+                    .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .ticketCode)
+                    .onSubmit {
+                        if canCreate {
+                            focusedField = .summary
+                        }
+                    }
+
+                TextField("Description", text: $summary, prompt: Text("Optional"))
+                    .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .summary)
+                    .onSubmit(createTicket)
+            }
+            .formStyle(.grouped)
+
+            if let existingTicket {
+                Label("\(existingTicket.code) already exists.", systemImage: "exclamationmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            } else {
+                Label("The ticket will be added with 0h logged.", systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Spacer()
+
+                Button("Cancel", role: .cancel) {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Create ticket") {
+                    createTicket()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canCreate)
+            }
+        }
+        .padding(24)
+        .frame(width: 440)
+        .onAppear {
+            focusedField = .ticketCode
+        }
+    }
+
+    private func createTicket() {
+        guard canCreate, let ticket = store.createTicket(code: normalizedCode, summary: summary) else {
+            return
+        }
+
+        onCreate(ticket)
+        dismiss()
     }
 }
 

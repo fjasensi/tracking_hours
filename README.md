@@ -11,6 +11,8 @@ SwiftUI macOS app for tracking daily Jira ticket time entries.
 - Main view for the selected day, defaulting to today.
 - Quick time entry with ticket, description, hours, date, and comment.
 - Reusable local ticket catalog so existing ticket codes do not need to be retyped.
+- Create tickets with no time entries so they are ready before work is logged.
+- Close, restore, and delete tickets from the ticket library.
 - Edit and delete individual entries.
 - Double-click ticket or entry rows to open a detail window.
 - Grouped ticket summary with total hours per ticket.
@@ -43,6 +45,7 @@ tracking_hours/
     ContentView.swift
     HistoryView.swift
     SettingsView.swift
+    TicketLibraryView.swift
     TodayView.swift
   tracking_hoursApp.swift
 ```

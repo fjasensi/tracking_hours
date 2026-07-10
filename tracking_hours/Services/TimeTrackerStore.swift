@@ -172,6 +172,20 @@ final class TimeTrackerStore: ObservableObject {
         persistAndRefreshNotifications()
     }
 
+    @discardableResult
+    func createTicket(code: String, summary: String) -> JiraTicket? {
+        let cleanedCode = code.normalizedTicketCode
+        guard !cleanedCode.isEmpty, ticket(for: cleanedCode) == nil else {
+            return nil
+        }
+
+        let ticket = JiraTicket(code: cleanedCode, summary: summary)
+        tickets.append(ticket)
+        tickets = Self.normalizedTickets(tickets)
+        persistAndRefreshNotifications()
+        return ticket
+    }
+
     func updateEntry(id: TimeEntry.ID, ticketCode: String, summary: String, hours: Double, date: Date, comment: String) {
         let cleanedTicketCode = ticketCode.normalizedTicketCode
         guard !cleanedTicketCode.isEmpty, hours > 0 else {
