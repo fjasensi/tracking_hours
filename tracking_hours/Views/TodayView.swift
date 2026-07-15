@@ -207,24 +207,16 @@ struct TodayView: View {
                 VStack(spacing: 10) {
                     Table(dayEntries, selection: $selectedEntryID) {
                         TableColumn("Ticket") { entry in
-                            DoubleClickText(text: entry.ticketCode) {
-                                openEntryDetail(entry.id)
-                            }
+                            entryCell(text: entry.ticketCode, entry: entry)
                         }
                         TableColumn("Description") { entry in
-                            DoubleClickText(text: entry.summary.isEmpty ? "-" : entry.summary) {
-                                openEntryDetail(entry.id)
-                            }
+                            entryCell(text: entry.summary.isEmpty ? "-" : entry.summary, entry: entry)
                         }
                         TableColumn("Hours") { entry in
-                            DoubleClickText(text: "\(entry.hours.hoursText)h", monospaced: true) {
-                                openEntryDetail(entry.id)
-                            }
+                            entryCell(text: "\(entry.hours.hoursText)h", monospaced: true, entry: entry)
                         }
                         TableColumn("Comment") { entry in
-                            DoubleClickText(text: entry.comment.isEmpty ? "-" : entry.comment) {
-                                openEntryDetail(entry.id)
-                            }
+                            entryCell(text: entry.comment.isEmpty ? "-" : entry.comment, entry: entry)
                         }
                     }
                     .frame(minHeight: 220)
@@ -273,12 +265,35 @@ struct TodayView: View {
     private func openEntryDetail(_ entryID: TimeEntry.ID) {
         openWindow(value: EntryDetailPayload(entryID: entryID))
     }
+
+    private func entryCell(text: String, monospaced: Bool = false, entry: TimeEntry) -> some View {
+        DoubleClickText(
+            text: text,
+            monospaced: monospaced,
+            onSelect: { selectedEntryID = entry.id }
+        ) {
+            openEntryDetail(entry.id)
+        }
+    }
 }
 
 private struct DoubleClickText: View {
     let text: String
-    var monospaced = false
+    let monospaced: Bool
+    let onSelect: () -> Void
     let action: () -> Void
+
+    init(
+        text: String,
+        monospaced: Bool = false,
+        onSelect: @escaping () -> Void = {},
+        action: @escaping () -> Void
+    ) {
+        self.text = text
+        self.monospaced = monospaced
+        self.onSelect = onSelect
+        self.action = action
+    }
 
     var body: some View {
         Text(text)
@@ -286,7 +301,8 @@ private struct DoubleClickText: View {
             .modifier(MonospacedModifier(isEnabled: monospaced))
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
-            .onTapGesture(count: 2, perform: action)
+            .onTapGesture(perform: onSelect)
+            .simultaneousGesture(TapGesture(count: 2).onEnded(action))
     }
 }
 

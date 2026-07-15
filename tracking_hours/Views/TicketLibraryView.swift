@@ -65,30 +65,28 @@ struct TicketLibraryView: View {
                 } else {
                     Table(tickets, selection: $selectedTicketCode) {
                         TableColumn("Ticket") { ticket in
-                            TicketLibraryCellText(text: ticket.code) {
-                                openTicketDetail(ticket.code)
-                            }
+                            ticketCell(text: ticket.code, ticket: ticket)
                         }
                         TableColumn("Description") { ticket in
-                            TicketLibraryCellText(text: ticket.summary.isBlank ? "-" : ticket.summary) {
-                                openTicketDetail(ticket.code)
-                            }
+                            ticketCell(text: ticket.summary.isBlank ? "-" : ticket.summary, ticket: ticket)
                         }
                         TableColumn("Status") { ticket in
                             TicketStatusBadge(isClosed: ticket.isClosed)
-                                .onTapGesture(count: 2) {
-                                    openTicketDetail(ticket.code)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedTicketCode = ticket.code
                                 }
+                                .simultaneousGesture(
+                                    TapGesture(count: 2).onEnded {
+                                        openTicketDetail(ticket.code)
+                                    }
+                                )
                         }
                         TableColumn("Entries") { ticket in
-                            TicketLibraryCellText(text: "\(store.entryCount(forTicket: ticket.code))", monospaced: true) {
-                                openTicketDetail(ticket.code)
-                            }
+                            ticketCell(text: "\(store.entryCount(forTicket: ticket.code))", monospaced: true, ticket: ticket)
                         }
                         TableColumn("Total") { ticket in
-                            TicketLibraryCellText(text: "\(store.totalHours(forTicket: ticket.code).hoursText)h", monospaced: true) {
-                                openTicketDetail(ticket.code)
-                            }
+                            ticketCell(text: "\(store.totalHours(forTicket: ticket.code).hoursText)h", monospaced: true, ticket: ticket)
                         }
                     }
                     .frame(minHeight: 360)
@@ -266,6 +264,16 @@ struct TicketLibraryView: View {
         selectedTicketCode = nil
         self.ticketPendingDeletion = nil
     }
+
+    private func ticketCell(text: String, monospaced: Bool = false, ticket: JiraTicket) -> some View {
+        TicketLibraryCellText(
+            text: text,
+            monospaced: monospaced,
+            onSelect: { selectedTicketCode = ticket.code }
+        ) {
+            openTicketDetail(ticket.code)
+        }
+    }
 }
 
 private struct NewTicketView: View {
@@ -367,6 +375,7 @@ private struct NewTicketView: View {
 private struct TicketLibraryCellText: View {
     let text: String
     var monospaced = false
+    let onSelect: () -> Void
     let action: () -> Void
 
     var body: some View {
@@ -375,7 +384,8 @@ private struct TicketLibraryCellText: View {
             .modifier(TicketLibraryMonospacedModifier(isEnabled: monospaced))
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
-            .onTapGesture(count: 2, perform: action)
+            .onTapGesture(perform: onSelect)
+            .simultaneousGesture(TapGesture(count: 2).onEnded(action))
     }
 }
 
