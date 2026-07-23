@@ -9,17 +9,22 @@ final class TimeTrackerStore: ObservableObject {
     @Published private(set) var settings: AppSettings
     @Published private(set) var notificationPermission: NotificationPermissionState = .unknown
     @Published private(set) var lastPersistenceError: String?
+    @Published private(set) var automaticBackupDirectoryURL: URL?
+    @Published private(set) var lastBackupError: String?
 
     private let persistence: LocalJSONPersistence
+    private let backupService: AutomaticBackupService
     private let notificationService: NotificationService
     private let calendar: Calendar
 
     init(
         persistence: LocalJSONPersistence? = nil,
+        backupService: AutomaticBackupService? = nil,
         notificationService: NotificationService? = nil,
         calendar: Calendar = .current
     ) {
         self.persistence = persistence ?? LocalJSONPersistence()
+        self.backupService = backupService ?? AutomaticBackupService()
         self.notificationService = notificationService ?? NotificationService()
         self.calendar = calendar
 
@@ -28,6 +33,7 @@ final class TimeTrackerStore: ObservableObject {
         self.entries = dataFile.entries
         self.settings = dataFile.settings
         self.selectedDate = Date()
+        self.automaticBackupDirectoryURL = self.backupService.directoryURL
 
         Task {
             await bootstrapNotifications()
@@ -36,6 +42,68 @@ final class TimeTrackerStore: ObservableObject {
 
     var dataFileURL: URL {
         persistence.fileURL
+    }
+
+    func exportData() throws -> Data {
+        try persistence.encode(currentDataFile)
+    }
+
+    func importPreview(from data: Data) throws -> (ticketCount: Int, entryCount: Int) {
+        let dataFile = try persistence.decode(data)
+        return (Self.normalizedTickets(dataFile.tickets).count, dataFile.entries.count)
+    }
+
+    func importData(_ data: Data) throws {
+        let importedData = try persistence.decode(data)
+        let normalizedData = AppDataFile(
+            tickets: Self.normalizedTickets(importedData.tickets),
+            entries: importedData.entries,
+            settings: Self.normalizedSettings(importedData.settings)
+        )
+
+        let currentData = try persistence.encode(currentDataFile)
+        try backupService.createBackup(from: currentData, reason: "pre-import")
+        try persistence.save(normalizedData)
+
+        tickets = normalizedData.tickets
+        entries = normalizedData.entries
+        settings = normalizedData.settings
+        lastPersistenceError = nil
+
+        do {
+            let importedBackup = try persistence.encode(normalizedData)
+            try backupService.createBackup(from: importedBackup, reason: "backup")
+            lastBackupError = nil
+        } catch {
+            lastBackupError = error.localizedDescription
+        }
+
+        Task {
+            await refreshNotifications()
+        }
+    }
+
+    @discardableResult
+    func configureAutomaticBackups(parentURL: URL) throws -> URL {
+        let directoryURL = try backupService.configure(parentURL: parentURL)
+        automaticBackupDirectoryURL = directoryURL
+
+        do {
+            let data = try persistence.encode(currentDataFile)
+            try backupService.createBackup(from: data)
+            lastBackupError = nil
+        } catch {
+            lastBackupError = error.localizedDescription
+            throw error
+        }
+
+        return directoryURL
+    }
+
+    func disableAutomaticBackups() {
+        backupService.disable()
+        automaticBackupDirectoryURL = nil
+        lastBackupError = nil
     }
 
     var sortedTickets: [JiraTicket] {
@@ -272,11 +340,20 @@ final class TimeTrackerStore: ObservableObject {
 
     private func persistAndRefreshNotifications() {
         do {
-            let dataFile = AppDataFile(tickets: tickets, entries: entries, settings: settings)
-            try persistence.save(dataFile)
+            try persistence.save(currentDataFile)
             lastPersistenceError = nil
         } catch {
             lastPersistenceError = error.localizedDescription
+        }
+
+        if lastPersistenceError == nil {
+            do {
+                let data = try persistence.encode(currentDataFile)
+                try backupService.createBackup(from: data)
+                lastBackupError = nil
+            } catch {
+                lastBackupError = error.localizedDescription
+            }
         }
 
         Task {
@@ -285,10 +362,20 @@ final class TimeTrackerStore: ObservableObject {
     }
 
     private func normalizeSettings() {
+        settings = Self.normalizedSettings(settings)
+    }
+
+    private var currentDataFile: AppDataFile {
+        AppDataFile(tickets: tickets, entries: entries, settings: settings)
+    }
+
+    private static func normalizedSettings(_ settings: AppSettings) -> AppSettings {
+        var settings = settings
         settings.targetHours = min(max(settings.targetHours, 0.25), 24)
         settings.notificationHour = min(max(settings.notificationHour, 0), 23)
         settings.notificationMinute = min(max(settings.notificationMinute, 0), 59)
         settings.workdays = settings.workdays.filter { (1...7).contains($0) }
+        return settings
     }
 
     @discardableResult

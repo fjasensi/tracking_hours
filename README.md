@@ -20,6 +20,8 @@ SwiftUI macOS app for tracking daily Jira ticket time entries.
 - History view by day with total, balance, and distinct tickets.
 - Settings for daily target hours, reminder time, workdays, and notifications.
 - Local JSON persistence in Application Support.
+- Manual JSON export and confirmed import.
+- Automatic rotating backups to a user-selected folder in Documents.
 - Local notification on workdays when configured reminder time arrives and hours are missing.
 - Native macOS app icon and accent color assets.
 
@@ -67,6 +69,8 @@ The built app product is named `Jira Hours.app`.
 ## Local Data
 
 The JSON file is stored in Application Support, inside the app sandbox when run from Xcode. The Settings screen shows the exact file path.
+
+The Data and Backups section in Settings can export or import the complete JSON file. Automatic backups require choosing a parent folder once (normally Documents); the app creates `Tracking Hours Backups` inside it, remembers the sandbox permission, saves after each change, and retains the latest 30 copies.
 
 ## Notifications
 

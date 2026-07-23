@@ -1,13 +1,15 @@
 import Foundation
 
 struct AppDataFile: Codable {
+    static let currentSchemaVersion = 3
+
     var schemaVersion: Int
     var tickets: [JiraTicket]
     var entries: [TimeEntry]
     var settings: AppSettings
 
     init(
-        schemaVersion: Int = 3,
+        schemaVersion: Int = AppDataFile.currentSchemaVersion,
         tickets: [JiraTicket] = [],
         entries: [TimeEntry] = [],
         settings: AppSettings = AppSettings()
@@ -89,9 +91,7 @@ final class LocalJSONPersistence {
 
         do {
             let data = try Data(contentsOf: fileURL)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode(AppDataFile.self, from: data)
+            return try decode(data)
         } catch {
             print("Could not load local JSON: \(error.localizedDescription)")
             return AppDataFile()
@@ -101,11 +101,30 @@ final class LocalJSONPersistence {
     func save(_ dataFile: AppDataFile) throws {
         try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
 
+        let data = try encode(dataFile)
+        try data.write(to: fileURL, options: [.atomic])
+    }
+
+    func encode(_ dataFile: AppDataFile) throws -> Data {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
-        let data = try encoder.encode(dataFile)
-        try data.write(to: fileURL, options: [.atomic])
+        return try encoder.encode(dataFile)
+    }
+
+    func decode(_ data: Data) throws -> AppDataFile {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let dataFile = try decoder.decode(AppDataFile.self, from: data)
+
+        guard dataFile.schemaVersion <= AppDataFile.currentSchemaVersion else {
+            throw CocoaError(
+                .coderReadCorrupt,
+                userInfo: [NSLocalizedDescriptionKey: "This backup was created by a newer version of Jira Hours."]
+            )
+        }
+
+        return dataFile
     }
 }
